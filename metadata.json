@@ -1,0 +1,7 @@
+{
+  "name": "AgriAide: Crop Disease Detector",
+  "description": "An AI-powered system for farmers to detect crop diseases by uploading an image of a plant leaf. The app provides a diagnosis, confidence score, and detailed advisory on remedies and prevention in multiple languages.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

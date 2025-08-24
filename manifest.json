@@ -1,0 +1,22 @@
+{
+  "short_name": "AgriAide",
+  "name": "AgriAide: Crop Disease Detector",
+  "description": "An AI-powered system for farmers to detect crop diseases by uploading an image of a plant leaf. The app provides a diagnosis, confidence score, and detailed advisory on remedies and prevention in multiple languages.",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#16a34a",
+  "background_color": "#f9fafb"
+}
