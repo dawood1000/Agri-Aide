@@ -15,7 +15,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [language, setLanguage] = useState<Language>(Language.EN);
 
   useEffect(() => {
-    const isRtl = language === Language.UR || language === Language.SI;
+    const isRtl = language === Language.UR || language === Language.SI || language === Language.PS || language === Language.BAL;
     if (isRtl) {
       document.documentElement.dir = 'rtl';
       document.body.classList.add('font-urdu');

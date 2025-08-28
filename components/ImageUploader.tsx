@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { CameraIcon } from './icons/CameraIcon';
@@ -7,6 +6,9 @@ import { UploadIcon } from './icons/UploadIcon';
 interface ImageUploaderProps {
   onImageSelect: (base64Image: string) => void;
 }
+
+// Simple check for mobile devices to select the appropriate camera
+const isMobile = /Mobi/i.test(window.navigator.userAgent);
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect }) => {
   const { t } = useLanguage();
@@ -54,7 +56,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onImageSelect }) =
         <input
           type="file"
           accept="image/*"
-          capture="environment" // This is key for opening the camera
+          capture={isMobile ? 'environment' : 'user'} // This is key for opening the correct camera
           onChange={handleFileChange}
           className="hidden"
           ref={cameraInputRef}

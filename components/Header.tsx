@@ -4,13 +4,15 @@ import { useLanguage } from '../context/LanguageContext';
 import { Language } from '../types';
 import { LeafIcon } from './icons/LeafIcon';
 import { HistoryIcon } from './icons/HistoryIcon';
+import { InfoIcon } from './icons/InfoIcon';
 
 interface HeaderProps {
   onHistoryClick: () => void;
+  onAboutClick: () => void;
   isHome: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onHistoryClick, isHome }) => {
+export const Header: React.FC<HeaderProps> = ({ onHistoryClick, onAboutClick, isHome }) => {
   const { language, setLanguage, t } = useLanguage();
 
   return (
@@ -20,15 +22,24 @@ export const Header: React.FC<HeaderProps> = ({ onHistoryClick, isHome }) => {
           <LeafIcon className="w-8 h-8 text-green-600" />
           <h1 className="text-xl font-bold text-green-800">{t('appName')}</h1>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           {isHome && (
-            <button
-              onClick={onHistoryClick}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label={t('history')}
-            >
-              <HistoryIcon className="w-6 h-6 text-gray-600" />
-            </button>
+            <>
+              <button
+                onClick={onAboutClick}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label={t('about')}
+              >
+                <InfoIcon className="w-6 h-6 text-gray-600" />
+              </button>
+              <button
+                onClick={onHistoryClick}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label={t('history')}
+              >
+                <HistoryIcon className="w-6 h-6 text-gray-600" />
+              </button>
+            </>
           )}
           <select
             value={language}
@@ -38,6 +49,8 @@ export const Header: React.FC<HeaderProps> = ({ onHistoryClick, isHome }) => {
             <option value={Language.EN}>English</option>
             <option value={Language.UR}>اردو</option>
             <option value={Language.SI}>سنڌي</option>
+            <option value={Language.PS}>پښتو</option>
+            <option value={Language.BAL}>بلوچی</option>
           </select>
         </div>
       </div>

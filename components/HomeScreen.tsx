@@ -64,7 +64,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({ onAnalyze }) => {
                 disabled={!selectedImage}
                 className="w-full max-w-md bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                {t('scanNewLeaf')}
+                {selectedImage ? t('scanLeaf') : t('scanNewLeaf')}
               </button>
             </div>
           </div>

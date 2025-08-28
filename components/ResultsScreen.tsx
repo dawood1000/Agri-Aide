@@ -1,13 +1,17 @@
-
-import React from 'react';
-import type { AnalysisResult } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import type { AnalysisResult, Crop } from '../types';
+import { Language } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { LeafIcon } from './icons/LeafIcon';
+import { SpeakerLoudIcon } from './icons/SpeakerLoudIcon';
+import { StopCircleIcon } from './icons/StopCircleIcon';
 
 interface ResultsScreenProps {
   result: AnalysisResult;
   image: string;
+  crop: Crop;
   onBack: () => void;
+  onAnalyzeRequest: (crop: Crop, image: string) => void;
 }
 
 const ResultCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -25,12 +29,113 @@ const ListItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 );
 
 
-export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, onBack }) => {
-  const { t } = useLanguage();
+export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, crop, onBack, onAnalyzeRequest }) => {
+  const { t, language } = useLanguage();
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const confidenceColor = result.confidenceScore > 80 ? 'text-green-600' : result.confidenceScore > 50 ? 'text-yellow-600' : 'text-red-600';
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    // Don't re-analyze on the initial render of the component
+    if (isInitialMount.current) {
+        isInitialMount.current = false;
+        return;
+    }
+    // Re-analyze when the language changes to get translated results
+    onAnalyzeRequest(crop, image);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language]);
+
+
+  const getLangCode = (lang: Language): string => {
+    switch(lang) {
+        case Language.UR: return 'ur-PK';
+        case Language.SI: return 'sd-IN'; // Best available option in browsers
+        case Language.PS: return 'ps-AF'; // Best available option in browsers
+        case Language.BAL: return 'ur-PK'; // Fallback for Balochi
+        case Language.EN:
+        default:
+            return 'en-US';
+    }
+  }
+
+  // Effect to load available speech synthesis voices
+  useEffect(() => {
+    const loadVoices = () => {
+      setVoices(window.speechSynthesis.getVoices());
+    };
+    
+    // Voices load asynchronously
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices(); // For browsers that load voices instantly
+
+    // Cleanup: stop speaking and remove listener when component unmounts
+    return () => {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
+  const createSpeechText = () => {
+    let text = `${result.diseaseName}. `;
+    text += `${t('diseaseInfo')}: ${result.description}. `;
+
+    if (!result.isHealthy) {
+        if (result.symptoms?.length > 0) {
+            text += `${t('symptoms')}: ${result.symptoms.join(', ')}. `;
+        }
+        if (result.remedies) {
+            text += `${t('remedies')}: `;
+            if (result.remedies.chemical?.length > 0) {
+                text += `${t('chemical')}: ${result.remedies.chemical.join(', ')}. `;
+            }
+            if (result.remedies.organic?.length > 0) {
+                text += `${t('organic')}: ${result.remedies.organic.join(', ')}. `;
+            }
+        }
+        if (result.preventiveMeasures?.length > 0) {
+            text += `${t('prevention')}: ${result.preventiveMeasures.join(', ')}. `;
+        }
+    }
+    return text;
+  };
+
+  const handleToggleSpeech = () => {
+    const synth = window.speechSynthesis;
+    if (isSpeaking) {
+      synth.cancel();
+      setIsSpeaking(false);
+    } else {
+      const speechText = createSpeechText();
+      const utterance = new SpeechSynthesisUtterance(speechText);
+      const targetLang = getLangCode(language);
+      
+      utterance.lang = targetLang;
+
+      // Find a specific voice for the target language for better quality
+      const voice = voices.find(v => v.lang === targetLang) || voices.find(v => v.lang.startsWith(targetLang.split('-')[0]));
+      
+      if (voice) {
+        utterance.voice = voice;
+      } else {
+        console.warn(`TTS voice not found for language: ${targetLang}. Using browser default.`);
+      }
+      
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = (event) => {
+        console.error('SpeechSynthesisUtterance.onerror', event);
+        setIsSpeaking(false);
+      };
+      
+      synth.speak(utterance);
+      setIsSpeaking(true);
+    }
+  };
+
 
   return (
-    <div className="container mx-auto p-4 max-w-3xl">
+    <div className="container mx-auto p-4 max-w-3xl pb-24">
       <h2 className="text-2xl font-bold text-center text-gray-800 my-4">{t('analysisResults')}</h2>
       
       <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-6">
@@ -100,6 +205,21 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, onB
           {t('backToHome')}
         </button>
       </div>
+      
+      <div className="fixed bottom-6 right-6 rtl:right-auto rtl:left-6 z-20">
+        <button
+          onClick={handleToggleSpeech}
+          className="bg-green-600 text-white rounded-full p-4 shadow-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-transform transform hover:scale-110"
+          aria-label={isSpeaking ? t('stopReading') : t('readAloud')}
+        >
+          {isSpeaking ? (
+            <StopCircleIcon className="w-8 h-8" />
+          ) : (
+            <SpeakerLoudIcon className="w-8 h-8" />
+          )}
+        </button>
+      </div>
+
     </div>
   );
 };

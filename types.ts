@@ -4,6 +4,8 @@ export enum Language {
   EN = 'English',
   UR = 'Urdu',
   SI = 'Sindhi',
+  PS = 'Pashto',
+  BAL = 'Balochi',
 }
 
 export enum AppScreen {
@@ -12,6 +14,7 @@ export enum AppScreen {
   RESULTS = 'results',
   HISTORY = 'history',
   HISTORY_DETAIL = 'history_detail',
+  ABOUT = 'about',
 }
 
 export interface Crop {

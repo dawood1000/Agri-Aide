@@ -17,7 +17,10 @@ root.render(
 // Register the service worker for PWA functionality
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
+    // Construct a full, absolute URL for the service worker to prevent cross-origin
+    // errors in sandboxed or iframe-based environments.
+    const swUrl = new URL('/sw.js', window.location.origin);
+    navigator.serviceWorker.register(swUrl)
       .then((registration) => {
         console.log('ServiceWorker registration successful with scope: ', registration.scope);
       })
