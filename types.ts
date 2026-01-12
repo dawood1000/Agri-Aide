@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export enum Language {
@@ -23,7 +24,14 @@ export interface Crop {
   icon: React.ReactNode;
 }
 
+export interface GroundingLink {
+  title: string;
+  uri: string;
+}
+
 export interface AnalysisResult {
+  cropMismatch?: boolean;
+  mismatchExplanation?: string;
   diseaseName: string;
   confidenceScore: number;
   isHealthy: boolean;
@@ -34,6 +42,8 @@ export interface AnalysisResult {
     organic: string[];
   };
   preventiveMeasures: string[];
+  regionalAlerts?: string[];
+  groundingLinks?: GroundingLink[];
 }
 
 export interface ScanHistoryItem {
@@ -42,4 +52,8 @@ export interface ScanHistoryItem {
   crop: Crop;
   image: string; // base64 encoded image
   result: AnalysisResult;
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
 }
