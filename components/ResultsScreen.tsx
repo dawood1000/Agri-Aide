@@ -56,7 +56,17 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, cro
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   
-  const confidenceColor = result.confidenceScore > 80 ? 'text-emerald-600 dark:text-emerald-400' : result.confidenceScore > 50 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400';
+  // Normalized confidence score (AI occasionally returns decimals, though prompt asks for integers)
+  const confidence = result.confidenceScore > 0 && result.confidenceScore <= 1 ? result.confidenceScore * 100 : (result.confidenceScore || 0);
+
+  const confidenceColor = result.isHealthy 
+    ? 'text-emerald-600 dark:text-emerald-400' 
+    : confidence > 80 ? 'text-emerald-600 dark:text-emerald-400' : confidence > 50 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400';
+    
+  const barColor = result.isHealthy 
+    ? 'bg-emerald-500' 
+    : confidence > 80 ? 'bg-emerald-500' : 'bg-amber-500';
+
   const lastLanguageRef = useRef<Language>(language);
 
   // Stop audio playback when result changes or component unmounts
@@ -180,14 +190,20 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, cro
               <h3 className={`text-3xl font-black ${result.isHealthy ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'} mb-3 leading-tight py-1`}>
                 {result.diseaseName}
               </h3>
-              {!result.isHealthy && (
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="flex-grow bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                     <div className={`h-full ${result.confidenceScore > 80 ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${result.confidenceScore}%` }}></div>
-                  </div>
-                  <span className={`text-sm font-black ${confidenceColor}`}>{result.confidenceScore}%</span>
+              
+              <div className="flex flex-col mb-6">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">{t('confidence')}</span>
+                  <span className={`text-sm font-black ${confidenceColor}`}>{Math.round(confidence)}%</span>
                 </div>
-              )}
+                <div className="bg-slate-100 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden shadow-inner">
+                  <div 
+                    className={`h-full transition-all duration-1000 ease-out rounded-full ${barColor}`} 
+                    style={{ width: `${confidence}%` }}
+                  ></div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <button 
                   onClick={handleToggleSpeech}
