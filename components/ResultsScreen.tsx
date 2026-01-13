@@ -4,10 +4,7 @@ import type { AnalysisResult, Crop, Language } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { LeafIcon } from './icons/LeafIcon';
-import { SpeakerLoudIcon } from './icons/SpeakerLoudIcon';
-import { StopCircleIcon } from './icons/StopCircleIcon';
 import { ShareIcon } from './icons/ShareIcon';
-import { generateTTS, decodeBase64, decodeAudioData } from '../services/geminiService';
 
 interface ResultsScreenProps {
   result: AnalysisResult;
@@ -48,12 +45,8 @@ const ListItem: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, crop, onBack, onChatClick, onAnalyzeRequest }) => {
   const { t, language } = useLanguage();
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isLoadingSpeech, setIsLoadingSpeech] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const lastLanguageRef = useRef<Language>(language);
 
   // Robust Confidence Score Normalization
@@ -68,25 +61,10 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, cro
   const confidenceColor = result.isHealthy ? 'text-emerald-600' : confidence > 75 ? 'text-emerald-600' : 'text-amber-600';
   const barColor = result.isHealthy ? 'bg-emerald-500' : confidence > 75 ? 'bg-emerald-500' : 'bg-amber-500';
 
-  // Stop any playing audio immediately
-  const stopAudio = useCallback(() => {
-    if (audioSourceRef.current) {
-      try {
-        audioSourceRef.current.stop();
-        audioSourceRef.current.disconnect();
-      } catch (e) {
-        // Source already stopped
-      }
-      audioSourceRef.current = null;
-    }
-    setIsSpeaking(false);
-    setIsLoadingSpeech(false);
-  }, []);
-
   // Cleanup on unmount
   useEffect(() => {
-    return () => stopAudio();
-  }, [stopAudio]);
+    return () => {};
+  }, []);
 
   // Logic for re-analysis on language change
   useEffect(() => {
@@ -95,57 +73,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, cro
       lastLanguageRef.current = language;
       onAnalyzeRequest(crop, image, language);
     }
-  }, [language, onAnalyzeRequest, crop, image, stopAudio]);
-
-  const handleToggleSpeech = async () => {
-    // If already playing or loading, stop it
-    if (isSpeaking || isLoadingSpeech) {
-      stopAudio();
-      return;
-    }
-
-    try {
-      setIsLoadingSpeech(true);
-      setActionError(null);
-      
-      const speechParts = [
-        result.diseaseName,
-        result.description,
-        ...(result.symptoms || []),
-        ...(result.preventiveMeasures || [])
-      ].filter(Boolean).join(". ");
-
-      const base64Audio = await generateTTS(speechParts, DEFAULT_VOICE);
-      
-      // Lazily initialize and resume context on user gesture
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-      }
-      
-      const ctx = audioContextRef.current;
-      if (ctx.state === 'suspended') await ctx.resume();
-
-      const audioBuffer = await decodeAudioData(decodeBase64(base64Audio), ctx, 24000, 1);
-      
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
-      source.onended = () => {
-        setIsSpeaking(false);
-        audioSourceRef.current = null;
-      };
-      
-      source.start(0);
-      audioSourceRef.current = source;
-      setIsSpeaking(true);
-    } catch (err) {
-      console.error("TTS Control Error:", err);
-      setActionError(t('errorTTS'));
-      setIsSpeaking(false);
-    } finally {
-      setIsLoadingSpeech(false);
-    }
-  };
+  }, [language, onAnalyzeRequest, crop, image]);
 
   const handleShare = async () => {
     const shareText = `${t('appName')} - ${result.diseaseName}\n\n${result.description}`;
@@ -204,16 +132,8 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, cro
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <button 
-                  onClick={handleToggleSpeech}
-                  disabled={isLoadingSpeech && !isSpeaking}
-                  className={`flex items-center justify-center gap-2 font-bold py-4 rounded-2xl transition-all shadow-lg active:scale-95 ${isSpeaking ? 'bg-rose-600 text-white shadow-rose-200' : 'bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-slate-700'}`}
-                >
-                  {isLoadingSpeech ? <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div> : isSpeaking ? <StopCircleIcon className="w-5 h-5" /> : <SpeakerLoudIcon className="w-5 h-5" />}
-                  <span className="text-[10px] uppercase tracking-wider">{isSpeaking ? t('stopReading') : t('readAloud')}</span>
-                </button>
-                <button onClick={handleShare} className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2">
+              <div className="mb-4">
+                <button onClick={handleShare} className="w-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-bold py-4 rounded-2xl shadow-lg flex items-center justify-center gap-2">
                   <ShareIcon className="w-5 h-5" />
                   <span className="text-[10px] uppercase tracking-wider">{t('shareResults')}</span>
                 </button>
