@@ -28,16 +28,18 @@ export const analyzeCropImage = async (
   const systemInstruction = `You are a world-class agricultural pathologist specializing in ${crop.name}.
 Analyze the provided leaf image.
 
-STRICT REQUIREMENTS:
-1. OUTPUT JSON ONLY. NO MARKDOWN.
-2. "confidenceScore" MUST BE AN INTEGER (0-100). NEVER MISSING.
-3. IF THE IMAGE IS NOT A LEAF OF ${crop.name}, SET "cropMismatch": true.
-4. LANGUAGE FOR ALL TEXT: ${language}.
+CRITICAL REQUIREMENTS:
+1. FIRST, check if the image shows a ${crop.name} leaf. If NOT, set "cropMismatch": true and provide explanation.
+2. OUTPUT JSON ONLY. NO MARKDOWN, NO EXTRA TEXT.
+3. "confidenceScore" MUST BE AN INTEGER (0-100).
+4. For healthy leaves, set "isHealthy": true and minimal details.
+5. For diseased leaves, provide detailed symptoms, remedies, and preventive measures.
+6. LANGUAGE FOR ALL TEXT: ${language}.
 
 JSON SCHEMA:
 {
   "cropMismatch": boolean,
-  "mismatchExplanation": "string",
+  "mismatchExplanation": "string (required if cropMismatch is true)",
   "diseaseName": "string",
   "confidenceScore": number,
   "isHealthy": boolean,
@@ -53,7 +55,7 @@ JSON SCHEMA:
       contents: {
         parts: [
           imagePart,
-          { text: `Analyze this ${crop.name} leaf for health issues in ${language}. Location: ${location?.latitude || '0'}, ${location?.longitude || '0'}. Return raw JSON.` }
+          { text: `Analyze this image for ${crop.name} leaf health. Check if it's actually a ${crop.name} leaf first. If not, set cropMismatch to true. If it is a ${crop.name} leaf, determine if it's healthy or diseased. For diseased leaves, identify the specific disease, symptoms, remedies, and prevention. Return only valid JSON matching the schema. Language: ${language}.` }
         ]
       },
       config: {
