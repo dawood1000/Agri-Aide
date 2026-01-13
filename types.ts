@@ -16,6 +16,7 @@ export enum AppScreen {
   HISTORY = 'history',
   HISTORY_DETAIL = 'history_detail',
   ABOUT = 'about',
+  CHAT = 'chat',
 }
 
 export interface Crop {
@@ -56,4 +57,9 @@ export interface ScanHistoryItem {
     latitude: number;
     longitude: number;
   };
+}
+
+export interface ChatMessage {
+  role: 'user' | 'model';
+  text: string;
 }

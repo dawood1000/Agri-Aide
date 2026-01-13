@@ -7,7 +7,7 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, (value: T) => vo
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.error(error);
+      console.error("LocalStorage Read Error:", error);
       return initialValue;
     }
   });
@@ -19,8 +19,12 @@ function useLocalStorage<T,>(key: string, initialValue: T): [T, (value: T) => vo
           ? storedValue(storedValue)
           : storedValue;
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        console.warn("LocalStorage is full. Consider clearing history.");
+        // Optional: Implement auto-pruning logic here
+      }
+      console.error("LocalStorage Write Error:", error);
     }
   }, [key, storedValue]);
 
