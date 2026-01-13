@@ -69,7 +69,6 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, cro
   // Logic for re-analysis on language change
   useEffect(() => {
     if (lastLanguageRef.current !== language) {
-      stopAudio();
       lastLanguageRef.current = language;
       onAnalyzeRequest(crop, image, language);
     }
@@ -160,6 +159,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, image, cro
             <>
               <ResultCard title={t('symptoms')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}>
                 <ul className="space-y-2">{result.symptoms?.map((s, i) => <ListItem key={i}>{s}</ListItem>)}</ul>
+              </ResultCard>
+              <ResultCard title={t('prevention')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}>
+                <ul className="space-y-2">{result.preventiveMeasures?.map((p, i) => <ListItem key={i}>{p}</ListItem>)}</ul>
               </ResultCard>
               <ResultCard title={t('remedies')} icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.673.337a4 4 0 01-2.506.331L6 15l2-2.5m1.428-1.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.673.337a4 4 0 01-2.506.331L2 10l2-2.5m10.744 3.372a4 4 0 115.714 5.714 4 4 0 01-5.714-5.714z" /></svg>}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
