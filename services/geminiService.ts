@@ -3,8 +3,9 @@ import { GoogleGenAI, Type, Modality, GenerateContentResponse, Chat } from "@goo
 import type { Language, Crop, AnalysisResult, ChatMessage, GroundingLink } from '../types';
 
 /**
- * Service to handle image analysis via Gemini 3 Pro.
- * Upgraded to Pro for superior visual reasoning and broader recognition of all 5 crop categories.
+ * Service to handle image analysis via Gemini 2.5 series.
+ * Using gemini-2.5-flash specifically to support googleMaps tool grounding 
+ * while maintaining high visual recognition accuracy for agricultural pathology.
  */
 export const analyzeCropImage = async (
   base64Image: string,
@@ -26,17 +27,20 @@ export const analyzeCropImage = async (
     },
   };
 
-  const systemInstruction = `You are a world-class agricultural pathologist. Your primary expertise covers: Cotton, Wheat, Sugarcane, Mango, and Rice.
-You are currently analyzing a ${crop.name} leaf image.
+  const systemInstruction = `You are a world-leading expert in Agricultural Pathology and Crop Science.
+Your specialized domain includes the following five crops: Cotton, Wheat, Sugarcane, Mango, and Rice.
 
-STRICT REQUIREMENTS:
-1. OUTPUT JSON ONLY. NO MARKDOWN.
-2. "confidenceScore" MUST BE AN INTEGER (0-100).
-3. If the image is CLEARLY not a leaf or is definitely not ${crop.name}, set "cropMismatch": true. 
-   However, allow for natural variations in growth stage and lighting.
-4. If you are unsure, set "confidenceScore" lower rather than triggering a mismatch unless it is obvious.
-5. Provide localized treatment advice for ${language} region.
-6. LANGUAGE FOR ALL TEXT: ${language}.
+VISUAL RECOGNITION MISSION:
+Analyze the user's submitted image of a ${crop.name} leaf. 
+1. Verify if the specimen is indeed ${crop.name}.
+2. Identify any visible diseases, pests, or nutrient deficiencies.
+3. Provide precise, actionable advice in ${language}.
+
+STRICT OUTPUT RULES:
+- OUTPUT RAW JSON ONLY. NO MARKDOWN WRAPPERS.
+- "confidenceScore" must be an integer (0-100).
+- "cropMismatch": Set to true only if the image is clearly NOT a plant or is a totally different species (e.g., an animal or a human). Be flexible with lighting and growth stages.
+- If the image is a leaf but you are unsure of the specific disease, provide the most likely diagnosis and a lower confidence score.
 
 JSON SCHEMA:
 {
@@ -53,16 +57,16 @@ JSON SCHEMA:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview", 
+      model: "gemini-2.5-flash", 
       contents: {
         parts: [
           imagePart,
-          { text: `Expert Analysis Request: Diagnose this ${crop.name} leaf for health issues or pests. Provide results in ${language}. Current Location Coordinates: ${location?.latitude || 'Unknown'}, ${location?.longitude || 'Unknown'}.` }
+          { text: `Analyze this ${crop.name} leaf for health issues. Context: Region for ${language}. Location: ${location?.latitude || 'Unknown'}, ${location?.longitude || 'Unknown'}.` }
         ]
       },
       config: {
         systemInstruction,
-        temperature: 0.15, // Slightly higher to allow for better generalization across varying leaf conditions
+        temperature: 0.2,
         tools: [{ googleMaps: {} }],
         toolConfig: {
           retrievalConfig: {
@@ -85,14 +89,13 @@ JSON SCHEMA:
       .filter((link): link is GroundingLink => link !== null);
 
     const textResponse = response.text || "";
-    // Robustly extract JSON from potential wrapper text
     const match = textResponse.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("INVALID_RESPONSE_FORMAT");
     
     const cleanedJson = match[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
     const result = JSON.parse(cleanedJson) as AnalysisResult;
     
-    // Fallback normalization for confidence scores
+    // Normalize confidence score
     if (typeof result.confidenceScore !== 'number') {
       result.confidenceScore = 85;
     } else if (result.confidenceScore <= 1) {
@@ -102,13 +105,13 @@ JSON SCHEMA:
     result.groundingLinks = groundingLinks;
     return result;
   } catch (error: any) {
-    console.error("Gemini Pro Analysis Error:", error);
+    console.error("Gemini Analysis Error:", error);
     throw new Error(error.message === "API_KEY_NOT_CONFIGURED" ? "API_KEY_NOT_CONFIGURED" : "ANALYSIS_FAILED");
   }
 };
 
 /**
- * Starts a new chat session for follow-up expert advice.
+ * Starts a new chat session. Using gemini-3-flash-preview here as tools aren't strictly needed for text chat.
  */
 export const startAgriChat = (
   crop: Crop,
@@ -120,15 +123,15 @@ export const startAgriChat = (
 
   const ai = new GoogleGenAI({ apiKey });
   return ai.chats.create({
-    model: 'gemini-3-pro-preview', // Upgraded to Pro for more complex reasoning in chat
+    model: 'gemini-3-flash-preview', 
     config: {
-      systemInstruction: `You are an expert AI Agronomist specializing in ${crop.name}. A user has just received a diagnosis of "${diagnosis.diseaseName}". Answer follow-up questions in ${language} with technical accuracy and practical farming advice.`,
+      systemInstruction: `You are an expert AI Agronomist specializing in ${crop.name}. User diagnosis: ${diagnosis.diseaseName}. Answer in ${language}.`,
     },
   });
 };
 
 /**
- * TTS generation remains on Flash for speed.
+ * TTS generation on Flash.
  */
 export const generateTTS = async (text: string, voiceName: string = 'Zephyr'): Promise<string> => {
   const apiKey = process.env.API_KEY;
