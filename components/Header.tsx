@@ -20,7 +20,7 @@ export const Header: React.FC<HeaderProps> = ({ onHistoryClick, onAboutClick, is
   const isRtl = language !== Language.EN;
 
   return (
-    <header className="glass dark:bg-slate-900/80 shadow-sm sticky top-0 z-50 border-b border-white/20 dark:border-slate-800 transition-colors">
+    <header className="glass dark:bg-slate-900/90 shadow-sm sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 transition-colors">
       <div className={`container mx-auto px-4 flex justify-between items-center ${isRtl ? 'py-6 min-h-[110px]' : 'py-3 min-h-[64px]'} md:min-h-[80px]`}>
         <div className="flex items-center gap-3 group cursor-pointer overflow-visible">
           <div className="bg-emerald-600 p-2 rounded-xl shadow-md group-hover:bg-emerald-500 transition-all flex-shrink-0">
@@ -35,17 +35,17 @@ export const Header: React.FC<HeaderProps> = ({ onHistoryClick, onAboutClick, is
         <div className="flex items-center gap-2 md:gap-4">
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm"
+            className="p-2.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm border border-slate-200 dark:border-slate-700"
             title="Toggle Theme"
           >
             {theme === 'light' ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
             ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4-9H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 12.728l-.707-.707M6.343 17.657l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 12.728l-.707-.707M6.343 17.657l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
             )}
           </button>
           {isHome && (
-            <div className="flex items-center bg-slate-100/80 dark:bg-slate-800/80 p-1.5 rounded-full shadow-inner border border-white/50 dark:border-slate-700">
+            <div className="flex items-center bg-slate-100/80 dark:bg-slate-800/80 p-1.5 rounded-full shadow-inner border border-slate-200 dark:border-slate-700">
               <button
                 onClick={onAboutClick}
                 className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm transition-all"
