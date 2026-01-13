@@ -55,34 +55,32 @@ JSON SCHEMA:
       contents: {
         parts: [
           imagePart,
-          { text: `Analyze this image for ${crop.name} leaf health. Check if it's actually a ${crop.name} leaf first. If not, set cropMismatch to true. If it is a ${crop.name} leaf, determine if it's healthy or diseased. For diseased leaves, identify the specific disease, symptoms, remedies, and prevention. Return only valid JSON matching the schema. Language: ${language}.` }
+          { text: `You are an agricultural expert. First, determine if this image shows a ${crop.name} leaf. If not, respond with JSON: {"cropMismatch": true, "mismatchExplanation": "This image does not appear to be a ${crop.name} leaf."}
+
+If it is a ${crop.name} leaf, analyze it for diseases. Respond ONLY with valid JSON in this exact format:
+
+{
+  "cropMismatch": false,
+  "diseaseName": "Disease Name or 'Healthy'",
+  "confidenceScore": 85,
+  "isHealthy": true/false,
+  "description": "Brief description",
+  "symptoms": ["symptom1", "symptom2"],
+  "remedies": {"chemical": ["remedy1"], "organic": ["remedy2"]},
+  "preventiveMeasures": ["measure1", "measure2"]
+}
+
+Do not include any other text or markdown.` }
         ]
       },
       config: {
-        systemInstruction,
-        temperature: 0.1,
-        tools: [{ googleMaps: {} }],
-        toolConfig: {
-          retrievalConfig: {
-            latLng: location ? { latitude: location.latitude, longitude: location.longitude } : undefined
-          }
-        }
+        temperature: 0.1
       },
     });
 
     const candidate = response.candidates?.[0];
     if (!candidate || !candidate.content) throw new Error("ANALYSIS_FAILED");
     
-    // Extract Grounding Links
-    const groundingChunks = candidate.groundingMetadata?.groundingChunks;
-    const groundingLinks: GroundingLink[] = (groundingChunks || [])
-      .map((chunk: any) => {
-        if (chunk.maps) return { title: chunk.maps.title || "Map View", uri: chunk.maps.uri };
-        if (chunk.web) return { title: chunk.web.title || "Source", uri: chunk.web.uri };
-        return null;
-      })
-      .filter((link): link is GroundingLink => link !== null);
-
     const textResponse = response.text || "";
     const match = textResponse.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("INVALID_RESPONSE_FORMAT");
@@ -96,7 +94,6 @@ JSON SCHEMA:
       result.confidenceScore = 85; // Default fallback if model fails to provide
     }
     
-    result.groundingLinks = groundingLinks;
     return result;
   } catch (error: any) {
     console.error("Gemini Analysis Error:", error);
