@@ -3,7 +3,8 @@ import { GoogleGenAI, Type, Modality, GenerateContentResponse, Chat } from "@goo
 import type { Language, Crop, AnalysisResult, ChatMessage, GroundingLink } from '../types';
 
 /**
- * Service to handle image analysis via Gemini 2.5 series.
+ * Service to handle image analysis via Gemini 3 Pro.
+ * Upgraded to Pro for superior visual reasoning and broader recognition of all 5 crop categories.
  */
 export const analyzeCropImage = async (
   base64Image: string,
@@ -25,14 +26,17 @@ export const analyzeCropImage = async (
     },
   };
 
-  const systemInstruction = `You are a world-class agricultural pathologist specializing in ${crop.name}.
-Analyze the provided leaf image.
+  const systemInstruction = `You are a world-class agricultural pathologist. Your primary expertise covers: Cotton, Wheat, Sugarcane, Mango, and Rice.
+You are currently analyzing a ${crop.name} leaf image.
 
 STRICT REQUIREMENTS:
 1. OUTPUT JSON ONLY. NO MARKDOWN.
-2. "confidenceScore" MUST BE AN INTEGER (0-100). NEVER MISSING.
-3. IF THE IMAGE IS NOT A LEAF OF ${crop.name}, SET "cropMismatch": true.
-4. LANGUAGE FOR ALL TEXT: ${language}.
+2. "confidenceScore" MUST BE AN INTEGER (0-100).
+3. If the image is CLEARLY not a leaf or is definitely not ${crop.name}, set "cropMismatch": true. 
+   However, allow for natural variations in growth stage and lighting.
+4. If you are unsure, set "confidenceScore" lower rather than triggering a mismatch unless it is obvious.
+5. Provide localized treatment advice for ${language} region.
+6. LANGUAGE FOR ALL TEXT: ${language}.
 
 JSON SCHEMA:
 {
@@ -49,16 +53,16 @@ JSON SCHEMA:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
+      model: "gemini-3-pro-preview", 
       contents: {
         parts: [
           imagePart,
-          { text: `Analyze this ${crop.name} leaf for health issues in ${language}. Location: ${location?.latitude || '0'}, ${location?.longitude || '0'}. Return raw JSON.` }
+          { text: `Expert Analysis Request: Diagnose this ${crop.name} leaf for health issues or pests. Provide results in ${language}. Current Location Coordinates: ${location?.latitude || 'Unknown'}, ${location?.longitude || 'Unknown'}.` }
         ]
       },
       config: {
         systemInstruction,
-        temperature: 0.1,
+        temperature: 0.15, // Slightly higher to allow for better generalization across varying leaf conditions
         tools: [{ googleMaps: {} }],
         toolConfig: {
           retrievalConfig: {
@@ -71,7 +75,6 @@ JSON SCHEMA:
     const candidate = response.candidates?.[0];
     if (!candidate || !candidate.content) throw new Error("ANALYSIS_FAILED");
     
-    // Extract Grounding Links
     const groundingChunks = candidate.groundingMetadata?.groundingChunks;
     const groundingLinks: GroundingLink[] = (groundingChunks || [])
       .map((chunk: any) => {
@@ -82,22 +85,24 @@ JSON SCHEMA:
       .filter((link): link is GroundingLink => link !== null);
 
     const textResponse = response.text || "";
+    // Robustly extract JSON from potential wrapper text
     const match = textResponse.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("INVALID_RESPONSE_FORMAT");
     
-    // Clean JSON from invisible characters or control codes
     const cleanedJson = match[0].replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
     const result = JSON.parse(cleanedJson) as AnalysisResult;
     
-    // Safety check for confidenceScore
+    // Fallback normalization for confidence scores
     if (typeof result.confidenceScore !== 'number') {
-      result.confidenceScore = 85; // Default fallback if model fails to provide
+      result.confidenceScore = 85;
+    } else if (result.confidenceScore <= 1) {
+      result.confidenceScore = Math.round(result.confidenceScore * 100);
     }
     
     result.groundingLinks = groundingLinks;
     return result;
   } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
+    console.error("Gemini Pro Analysis Error:", error);
     throw new Error(error.message === "API_KEY_NOT_CONFIGURED" ? "API_KEY_NOT_CONFIGURED" : "ANALYSIS_FAILED");
   }
 };
@@ -115,27 +120,47 @@ export const startAgriChat = (
 
   const ai = new GoogleGenAI({ apiKey });
   return ai.chats.create({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3-pro-preview', // Upgraded to Pro for more complex reasoning in chat
     config: {
-      systemInstruction: `You are an expert AI Agronomist. User leaf: ${crop.name}, Diagnosis: ${diagnosis.diseaseName}. Answer in ${language}.`,
+      systemInstruction: `You are an expert AI Agronomist specializing in ${crop.name}. A user has just received a diagnosis of "${diagnosis.diseaseName}". Answer follow-up questions in ${language} with technical accuracy and practical farming advice.`,
     },
   });
 };
 
+/**
+ * TTS generation remains on Flash for speed.
+ */
 export const generateTTS = async (text: string, voiceName: string = 'Zephyr'): Promise<string> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API_KEY_NOT_CONFIGURED");
+  
   const ai = new GoogleGenAI({ apiKey });
+  
+  const sanitizedText = text
+    .replace(/[*_#`~>]/g, '')
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') 
+    .slice(0, 2000)
+    .trim();
+
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: text.slice(0, 1500) }] }],
+    contents: [{ parts: [{ text: sanitizedText }] }],
     config: {
       responseModalities: [Modality.AUDIO],
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName } } },
+      speechConfig: { 
+        voiceConfig: { 
+          prebuiltVoiceConfig: { voiceName } 
+        } 
+      },
     },
   });
+  
   const audioPart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData && p.inlineData.data);
-  return audioPart?.inlineData?.data || "";
+  if (!audioPart || !audioPart.inlineData) {
+    throw new Error("TTS_GENERATION_FAILED");
+  }
+  
+  return audioPart.inlineData.data;
 };
 
 export const decodeBase64 = (base64: string) => {
