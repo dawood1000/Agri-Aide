@@ -3,9 +3,8 @@ import { GoogleGenAI, Type, Modality, GenerateContentResponse, Chat } from "@goo
 import type { Language, Crop, AnalysisResult, ChatMessage, GroundingLink } from '../types';
 
 /**
- * Service to handle image analysis via Gemini 2.5 series.
- * Using gemini-2.5-flash specifically to support googleMaps tool grounding 
- * while maintaining high visual recognition accuracy for agricultural pathology.
+ * Service to handle image analysis via Gemini 3 Flash.
+ * Optimized for high-precision botanical recognition of Cotton, Wheat, Sugarcane, Mango, and Rice.
  */
 export const analyzeCropImage = async (
   base64Image: string,
@@ -27,20 +26,24 @@ export const analyzeCropImage = async (
     },
   };
 
-  const systemInstruction = `You are a world-leading expert in Agricultural Pathology and Crop Science.
-Your specialized domain includes the following five crops: Cotton, Wheat, Sugarcane, Mango, and Rice.
+  const systemInstruction = `You are an elite AI Botanical Pathologist. Your specialized knowledge core is limited to five crops: Cotton, Wheat, Sugarcane, Mango, and Rice.
 
-VISUAL RECOGNITION MISSION:
-Analyze the user's submitted image of a ${crop.name} leaf. 
-1. Verify if the specimen is indeed ${crop.name}.
-2. Identify any visible diseases, pests, or nutrient deficiencies.
-3. Provide precise, actionable advice in ${language}.
+RECOGNITION MISSION:
+Analyze the provided image of a ${crop.name} leaf. You must identify:
+1. SPECIMEN VALIDITY: Ensure the leaf belongs to the ${crop.name} species.
+   - Cotton: Palmately lobed leaves.
+   - Wheat: Long, narrow blades with parallel veins.
+   - Sugarcane: Broad, grass-like leaves with a prominent white midrib.
+   - Mango: Large, leathery, lanceolate leaves.
+   - Rice: Slender blades, often rough-textured.
+2. PATHOLOGY: Detect diseases (fungal, bacterial, viral), pests, or nutrient deficiencies.
+3. ADVISORY: Provide organic/chemical remedies and long-term prevention.
 
 STRICT OUTPUT RULES:
-- OUTPUT RAW JSON ONLY. NO MARKDOWN WRAPPERS.
-- "confidenceScore" must be an integer (0-100).
-- "cropMismatch": Set to true only if the image is clearly NOT a plant or is a totally different species (e.g., an animal or a human). Be flexible with lighting and growth stages.
-- If the image is a leaf but you are unsure of the specific disease, provide the most likely diagnosis and a lower confidence score.
+- OUTPUT RAW JSON ONLY. NO MARKDOWN WRAPPERS (\`\`\`json).
+- "confidenceScore" must be 0-100.
+- "cropMismatch": Set true only if the object is NOT a plant or clearly NOT a leaf.
+- Use ${language} for all text fields.
 
 JSON SCHEMA:
 {
@@ -57,33 +60,28 @@ JSON SCHEMA:
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash", 
+      model: "gemini-3-flash-preview", 
       contents: {
         parts: [
           imagePart,
-          { text: `Analyze this ${crop.name} leaf for health issues. Context: Region for ${language}. Location: ${location?.latitude || 'Unknown'}, ${location?.longitude || 'Unknown'}.` }
+          { text: `Identify health issues in this ${crop.name} leaf. Current Location: ${location?.latitude || 'Unknown'}, ${location?.longitude || 'Unknown'}. Respond in ${language}.` }
         ]
       },
       config: {
         systemInstruction,
-        temperature: 0.2,
-        tools: [{ googleMaps: {} }],
-        toolConfig: {
-          retrievalConfig: {
-            latLng: location ? { latitude: location.latitude, longitude: location.longitude } : undefined
-          }
-        }
+        temperature: 0.1,
+        tools: [{ googleSearch: {} }] // Using Google Search to ground advice in real-time regional data
       },
     });
 
     const candidate = response.candidates?.[0];
     if (!candidate || !candidate.content) throw new Error("ANALYSIS_FAILED");
     
+    // Extract Search Grounding Links
     const groundingChunks = candidate.groundingMetadata?.groundingChunks;
     const groundingLinks: GroundingLink[] = (groundingChunks || [])
       .map((chunk: any) => {
-        if (chunk.maps) return { title: chunk.maps.title || "Map View", uri: chunk.maps.uri };
-        if (chunk.web) return { title: chunk.web.title || "Source", uri: chunk.web.uri };
+        if (chunk.web) return { title: chunk.web.title || "Search Result", uri: chunk.web.uri };
         return null;
       })
       .filter((link): link is GroundingLink => link !== null);
@@ -105,13 +103,13 @@ JSON SCHEMA:
     result.groundingLinks = groundingLinks;
     return result;
   } catch (error: any) {
-    console.error("Gemini Analysis Error:", error);
+    console.error("Gemini 3 Analysis Error:", error);
     throw new Error(error.message === "API_KEY_NOT_CONFIGURED" ? "API_KEY_NOT_CONFIGURED" : "ANALYSIS_FAILED");
   }
 };
 
 /**
- * Starts a new chat session. Using gemini-3-flash-preview here as tools aren't strictly needed for text chat.
+ * Expert Chat Service using Gemini 3 Flash.
  */
 export const startAgriChat = (
   crop: Crop,
@@ -125,13 +123,13 @@ export const startAgriChat = (
   return ai.chats.create({
     model: 'gemini-3-flash-preview', 
     config: {
-      systemInstruction: `You are an expert AI Agronomist specializing in ${crop.name}. User diagnosis: ${diagnosis.diseaseName}. Answer in ${language}.`,
+      systemInstruction: `You are an expert AI Agronomist for ${crop.name}. A user has a crop with "${diagnosis.diseaseName}". Help them in ${language}.`,
     },
   });
 };
 
 /**
- * TTS generation on Flash.
+ * TTS generation using the specific TTS model.
  */
 export const generateTTS = async (text: string, voiceName: string = 'Zephyr'): Promise<string> => {
   const apiKey = process.env.API_KEY;
